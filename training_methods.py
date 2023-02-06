@@ -1,6 +1,7 @@
 
 import torch
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
 
 from pytorchtools import EarlyStopping
 from custom_reg_dataset import RegisterDataset
@@ -164,11 +165,19 @@ def hyperparameter_tuner(device, dims, num_folds, Dataloader_list, X_val_list, y
     #Datetime that will be used on naming the training report
     main_train_time_string = main_train_start_date.strftime("%d-%m-%Y_%H-%M-%S")
     
+    model_folder_path = "./net_weights/SVAE_models_" + main_train_time_string 
+    
+    if not os.path.exists(model_folder_path):
+        os.mkdir(model_folder_path)
+        print(model_folder_path  + " directory is created")
+    
     #folder for saving loss files
     loss_date_folder = loss_folder + main_train_time_string + "_loss_logs\\"
     if not os.path.exists(loss_date_folder):
         os.mkdir(loss_date_folder)
         print(main_train_time_string + "_loss_logs" + " directory is created under " + loss_folder)
+        
+    
 
     report_file_name = main_train_time_string + "_SVAE_hyperparameter_tuning_report" 
     loss_list = []
@@ -176,7 +185,7 @@ def hyperparameter_tuner(device, dims, num_folds, Dataloader_list, X_val_list, y
     count = 0
     main_train_start = timer()
     #Columns for information that will be recorded during training.
-    report_df = pd.DataFrame(columns = ["Seed", "Batch_size", "Encoder_num_neurons", "Encoder_num_hidden_layers", \
+    report_df = pd.DataFrame(columns = ["Model_number","Seed", "Batch_size", "Encoder_num_neurons", "Encoder_num_hidden_layers", \
                                         "Clf_num_neurons","Clf_num_hidden_layers", "Latent_size", "Alpha", "Beta", \
                                         "Init_lr", "W_decay", \
                                         "CV1_val_first_loss","CV2_val_first_loss","CV3_val_first_loss","CV4_val_first_loss", "CV5_val_first_loss",\
@@ -184,8 +193,10 @@ def hyperparameter_tuner(device, dims, num_folds, Dataloader_list, X_val_list, y
                                         "CV1_last_epoch","CV2_last_epoch","CV3_last_epoch","CV4_last_epoch","CV5_last_epoch", \
                                         "CV1_train_time", "CV2_train_time","CV3_train_time","CV4_train_time","CV5_train_time",\
                                         "CV1_val_acc", "CV2_val_acc", "CV3_val_acc", "CV4_val_acc", "CV5_val_acc",\
-                                        "CV1_val_auroc", "CV2_val_auroc", "CV3_val_auroc", "CV4_val_auroc", "CV5_val_auroc",\
-                                        "CV_avg_val_acc","CV_avg_val_auroc"])
+                                        "CV1_val_logit_auroc", "CV2_val_logit_auroc", "CV3_val_logit_auroc", "CV4_val_logit_auroc", "CV5_val_logit_auroc",\
+                                        "CV1_val_prob_soft_auroc", "CV2_val_prob_soft_auroc", "CV3_val_prob_soft_auroc", "CV4_val_prob_soft_auroc", "CV5_val_prob_soft_auroc",\
+                                        "CV1_val_prob_sig_auroc", "CV2_val_prob_sig_auroc", "CV3_val_prob_sig_auroc", "CV4_val_prob_sig_auroc", "CV5_val_prob_sig_auroc",\
+                                        "CV_avg_val_acc","CV_avg_val_logit_auroc", "CV_avg_val_prob_soft_auroc", "CV_avg_val_prob_sig_auroc"])
 
 
     #for loops for grid search of hyperparameters
@@ -204,7 +215,9 @@ def hyperparameter_tuner(device, dims, num_folds, Dataloader_list, X_val_list, y
                                     cv_last_epoch_list = []
                                     cv_train_time_list = []
                                     cv_val_acc_list = []
-                                    cv_val_auroc_list = []
+                                    cv_val_logit_auroc_list = []
+                                    cv_val_prob_soft_auroc_list = []
+                                    cv_val_prob_sig_auroc_list = []
                                     for fold in range(num_folds):
                                         cv_start_date = datetime.now()
                                         cv_time_string = cv_start_date.strftime("%d-%m-%Y_%H-%M-%S")
@@ -310,11 +323,27 @@ def hyperparameter_tuner(device, dims, num_folds, Dataloader_list, X_val_list, y
                                             _, val_pred_labels = torch.max(val_pred_labels_score, 1)
                                         #accuracy and auroc on validation fold is calculated
                                         cv_val_acc_list.append(accuracy_score(y_val_list[fold].to("cpu"), val_pred_labels.to("cpu")))
-                                        cv_val_auroc_list.append(roc_auc_score(y_val_list[fold].to("cpu"), val_pred_labels_score[:,1].to("cpu")))
+                                        cv_val_logit_auroc_list.append(roc_auc_score(y_val_list[fold].to("cpu"), val_pred_labels_score[:,1].to("cpu")))
+                                        
+                                        #auroc calculated on probability with softmax
+                                        val_pred_labels_prob_soft_score = F.softmax(val_pred_labels_score, dim=1)
+                                        cv_val_prob_soft_auroc_list.append(roc_auc_score(y_val_list[fold].to("cpu"), val_pred_labels_prob_soft_score[:,1].to("cpu")))
+                                        
+                                        #auroc calculated on probability with sigmoid
+                                        val_pred_labels_prob_sig_score = torch.sigmoid(val_pred_labels_score)
+                                        cv_val_prob_sig_auroc_list.append(roc_auc_score(y_val_list[fold].to("cpu"), val_pred_labels_prob_sig_score[:,1].to("cpu")))
+                                        
+                                        #model settings are saved
+                                        model_time = datetime.now()    
+                                        model_dt = model_time.strftime("%d-%m-%Y_%H-%M-%S")
+                                        model_path =  os.path.join(model_folder_path, model_dt + "_model_" +str(count) + "_fold_" +str(fold+1)+ ".pth")
+                                        torch.save(best_svae.state_dict(), model_path)
+                                        
+                                        
 
 
                                     #creating a list of all metrics calculated in this training section
-                                    tuning_result = [seed, batch_size,encoder_layers[-1], len(encoder_layers) - 1, \
+                                    tuning_result = [count, seed, batch_size,encoder_layers[-1], len(encoder_layers) - 1, \
                                                      classifier_layers[0], len(classifier_layers) - 1, latent_size, alpha, beta,\
                                                      lr, w_decay, \
                                                      cv_val_first_loss_list[0],cv_val_first_loss_list[1], cv_val_first_loss_list[2],\
@@ -327,9 +356,13 @@ def hyperparameter_tuner(device, dims, num_folds, Dataloader_list, X_val_list, y
                                                      cv_train_time_list[3], cv_train_time_list[4], \
                                                      cv_val_acc_list[0],cv_val_acc_list[1], cv_val_acc_list[2],\
                                                      cv_val_acc_list[3], cv_val_acc_list[4], \
-                                                     cv_val_auroc_list[0],cv_val_auroc_list[1], cv_val_auroc_list[2],\
-                                                     cv_val_auroc_list[3], cv_val_auroc_list[4], \
-                                                     mean_calc(cv_val_acc_list), mean_calc(cv_val_auroc_list)]
+                                                     cv_val_logit_auroc_list[0],cv_val_logit_auroc_list[1], cv_val_logit_auroc_list[2],\
+                                                     cv_val_logit_auroc_list[3], cv_val_logit_auroc_list[4], \
+                                                     cv_val_prob_soft_auroc_list[0], cv_val_prob_soft_auroc_list[1], cv_val_prob_soft_auroc_list[2],\
+                                                     cv_val_prob_soft_auroc_list[3], cv_val_prob_soft_auroc_list[4], \
+                                                     cv_val_prob_sig_auroc_list[0], cv_val_prob_sig_auroc_list[1], cv_val_prob_sig_auroc_list[2],\
+                                                     cv_val_prob_sig_auroc_list[3], cv_val_prob_sig_auroc_list[4], \
+                                                     mean_calc(cv_val_acc_list), mean_calc(cv_val_logit_auroc_list), mean_calc(cv_val_prob_soft_auroc_list), mean_calc(cv_val_prob_sig_auroc_list)]
                                     #adding the recorded metrics to report
                                     report_df.loc[len(report_df)] = tuning_result
                                     #updating the file with each finished training
