@@ -20,7 +20,7 @@ This repository contains the files that have been used SVAE training for the the
     Then the performance metrics are calculated on provided test data.
   5 d)latent_corr_calc:Function for calculating correlation between variables and latent dimensions.
 
-6-Thesis SVAE Training on High-dimensional data and Thesis SVAE Training on Moderate-dimensional data contain the code for flow of hyperparameter tuning and testing of it on validation test data. In the end, correlation of variables with latent dimensions are calculated.
+6-Thesis SVAE Training on High-dimensional Dataset and Thesis SVAE Training on Moderate-dimensional Dataset contain the code for flow of hyperparameter tuning and testing of it on validation test data. In the end, correlation of variables with latent dimensions are calculated.
 
 7-SVAE Training Results contains the results generated from Thesis SVAE Training files and includes the plots generated from these results.
 
