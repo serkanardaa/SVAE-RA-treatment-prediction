@@ -3,9 +3,13 @@
 This repository contains the files that have been used SVAE training for the thesis project.
 
 1-models folder contains codes for structure of SVAEs and their components such as encoder, decoder, and classifier.
+
 2-utils folder contains loss_fn.py file that includes code regarding the calculation of different loss values.
+
 3-custom_reg_dataset.py file is used for converting data to tensors to be used in dataloaders.
+
 4-pytorchtools.py contains EarlyStopping class used for early stopping during the training.
+
 5-training_methods.py contains 4 main functions that have been used throughout the training process.
   
   5 a)cv_fold_maker:Function for converting validation training data into folds. 
@@ -18,6 +22,7 @@ This repository contains the files that have been used SVAE training for the the
   5 c)model_test:Function for testing a SVAE model with specific hyperparameter settings on provided test data. 
     In contrast to hyperparameter_tuner function, no cross validation is done in this function. Only 1 training is done with whole provided training data.
     Then the performance metrics are calculated on provided test data.
+    
   5 d)latent_corr_calc:Function for calculating correlation between variables and latent dimensions.
 
 6-Thesis SVAE Training on High-dimensional Dataset and Thesis SVAE Training on Moderate-dimensional Dataset contain the code for flow of hyperparameter tuning and testing of it on validation test data. In the end, correlation of variables with latent dimensions are calculated.
@@ -25,6 +30,8 @@ This repository contains the files that have been used SVAE training for the the
 7-SVAE Training Results contains the results generated from Thesis SVAE Training files and includes the plots generated from these results.
 
   Source codes that contributed to the work in this project:
+  
   https://github.com/tianchenji/Multimodal-SVAE/tree/main
+  
   https://github.com/Bjarten/early-stopping-pytorch
   
